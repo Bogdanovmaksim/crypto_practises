@@ -1,0 +1,50 @@
+# Зависимости
+node_modules/
+vendor/
+packages/
+*.gem
+
+# Сборка и временные файлы
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.log
+*.tmp
+*.temp
+*.cache
+*.pid
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+*.bak
+*.swp
+*~
+._*
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Секреты
+.env
+.env.local
+*.key
+*.pem
+secrets.*
+
+# Тесты и покрытие
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+
+# Кеши
+__pycache__/
+*.pyc
+.pytest_cache/
+.eslintcache
