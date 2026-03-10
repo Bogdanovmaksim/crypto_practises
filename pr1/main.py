@@ -32,7 +32,7 @@ def simple_decrypt(text, key):
             result += char
     return result
 
-# Функция для нахождения обратного элемента по модулю 26
+
 def modinv(a):
     for i in range(26):
         if (a * i) % 26 == 1:
