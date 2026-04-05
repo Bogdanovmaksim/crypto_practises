@@ -1,146 +1,82 @@
-import itertools
-
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+COMMON_STARTS_3 = {
+    "THE", "AND", "THA", "FOR", "PRO", "CON", "INT", "COM", "SHE", "WHO", "WHI",
+    "ALL", "ANY", "ARE", "BUT", "CAN", "DID", "GET", "HAS", "HAD", "HOW", "HIS",
+    "HER", "OUT", "ONE", "OUR", "SEE", "TOO", "USE", "WAS", "WAY", "YOU"
+}
 
-def decrypt_ciphertext_autokey(ciphertext, primer_key):
+COMMON_STARTS_2 = {
+    "TH", "HE", "IN", "AN", "RE", "ON", "AT", "EN", "OF", "IS", "IT", "AL", "AR",
+    "ST", "TO", "SE", "HA", "AS", "OU", "CO", "ME", "DE", "HI", "RO", "NE", "EA",
+    "CE", "LI", "CH", "BE", "MA", "SI", "WH", "SH", "WE", "DO", "GO", "NO", "SO",
+    "MY", "BY", "UP", "US", "IF", "PR", "TR", "GR", "PL", "CR", "BL", "FL"
+}
+
+
+def decrypt_ciphertext_autokey_1char(ciphertext, primer_char):
     """
-    Дешифрование Виженера с автоключом по ШИФРТЕКСТУ.
-    Ключ формируется как: [Начальный ключ] + [Шифротекст]
+    Дешифровка самоключа по ШИФРТЕКСТУ.
     """
-    plaintext = ""
+    plaintext = []
+    current_key = primer_char.upper()
 
-    key_stream = list(primer_key.upper()) + list(ciphertext.upper())
-
-    for i, char in enumerate(ciphertext.upper()):
+    for char in ciphertext.upper():
         if char in ALPHABET:
             c_idx = ALPHABET.index(char)
-            k_idx = ALPHABET.index(key_stream[i])
+            k_idx = ALPHABET.index(current_key)
 
-            p_idx = (c_idx - k_idx) % len(ALPHABET)
-            p_char = ALPHABET[p_idx]
+            p_idx = (c_idx - k_idx) % 26
+            plaintext.append(ALPHABET[p_idx])
 
-            plaintext += p_char
+            current_key = char
         else:
-            plaintext += char
-            key_stream.insert(i, char)
+            plaintext.append(char)
 
-    return plaintext
-
-
-def attack_known_plaintext(ciphertext, known_start):
-    """
-    Атака на основе известного открытого текста.
-    Мгновенно вычисляет начальный ключ по первым символам и определяет его истинную длину.
-    """
-    known_start = known_start.upper()
-    raw_key = ""
-
-    for i, p_char in enumerate(known_start):
-        if i >= len(ciphertext):
-            break
-
-        c_char = ciphertext[i].upper()
-        if c_char in ALPHABET and p_char in ALPHABET:
-            c_idx = ALPHABET.index(c_char)
-            p_idx = ALPHABET.index(p_char)
-
-            k_idx = (c_idx - p_idx) % len(ALPHABET)
-            raw_key += ALPHABET[k_idx]
-
-    primer_key = raw_key
-    for i in range(1, len(raw_key)):
-        tail = raw_key[i:]
-        if ciphertext.startswith(tail):
-            primer_key = raw_key[:i]
-            break
-
-    print(f"\n[*] Угаданное начало: {known_start}")
-    print(f"[*] Сырой вычисленный ключ: {raw_key}")
-    print(f"[*] Истинный начальный ключ (Primer): {primer_key}")
-
-    return decrypt_ciphertext_autokey(ciphertext, primer_key)
+    return "".join(plaintext)
 
 
-def brute_force_attack(ciphertext, max_key_length=3, dictionary=None):
-    """
-    Атака полным перебором (Brute-force) начального ключа.
-    """
-    print(f"\n[*] Начинаем перебор ключей до длины {max_key_length}...")
-    best_results = []
+def evaluate_start(text):
 
-    for length in range(1, max_key_length + 1):
-        for key_tuple in itertools.product(ALPHABET, repeat=length):
-            key = "".join(key_tuple)
-            decrypted = decrypt_ciphertext_autokey(ciphertext, key)
+    clean_text = [c for c in text.upper() if c in ALPHABET]
+    if not clean_text: return 0
 
-            if dictionary:
-                score = sum(1 for word in dictionary if word in decrypted)
-                if score > 0:
-                    best_results.append((score, key, decrypted))
-            else:
-                best_results.append((0, key, decrypted))
+    score = 0
+    prefix2 = "".join(clean_text[:2])
+    prefix3 = "".join(clean_text[:3])
 
-    best_results.sort(key=lambda x: x[0], reverse=True)
-    return best_results[:5]
+    if prefix3 in COMMON_STARTS_3:
+        score += 100
+    elif prefix2 in COMMON_STARTS_2:
+        score += 30
+
+    bad_starts = ["UH", "BH", "QH", "YH", "XH", "ZH", "JH", "VH", "QZ", "QX", "JX", "ZX", "HX"]
+    if prefix2 in bad_starts:
+        score -= 50
+
+    return score
 
 
 def main():
-    print("Криптоанализ автоключа по ШИФРТЕКСТУ")
+    print("Криптоанализ самоключа по ШИФРТЕКСТУ\n")
 
-    while True:
-        print("\nМеню действий:")
-        print("1. Атака по известному началу текста (вычисление ключа)")
-        print("2. Атака полным перебором ключа (Brute-force)")
-        print("3. Выход")
+    ciphertext = input("Введите зашифрованный текст:\n").strip()
+    if not ciphertext: return
 
-        choice = input("Выберите действие (1-3): ").strip()
+    print("\n[*] Анализирую 26 вариантов начального символа...")
 
-        if choice == '3':
-            print("Завершение программы. До свидания!")
-            break
+    results = []
+    for primer in ALPHABET:
+        decrypted_text = decrypt_ciphertext_autokey_1char(ciphertext, primer)
+        score = evaluate_start(decrypted_text)
+        results.append((score, primer, decrypted_text))
 
-        if choice not in ['1', '2']:
-            print("Ошибка: Неверный выбор.")
-            continue
+    results.sort(key=lambda x: x[0], reverse=True)
 
-        target_ciphertext = input("\nВведите зашифрованный текст: ").strip().upper()
-        target_ciphertext = target_ciphertext.replace(" ", "")
-
-        if not target_ciphertext:
-            continue
-
-        if choice == '1':
-            guessed_word = input("Введите предполагаемое начало сообщения: ").strip().upper()
-            recovered_text = attack_known_plaintext(target_ciphertext, guessed_word)
-            print(f"[+] Результат расшифровки: {recovered_text}")
-
-        elif choice == '2':
-            try:
-                max_len = int(input("Введите максимальную длину ключа для перебора (рекомендуется 1-4): ").strip())
-            except ValueError:
-                print("Ошибка: нужно ввести число.")
-                continue
-
-            dict_input = input("Введите слова для поиска через запятую (Enter для стандартного словаря):\n").strip()
-
-            if dict_input:
-                vocab = [w.strip().upper() for w in dict_input.split(',')]
-            else:
-                vocab = ["HELLO", "MEET", "ATTACK", "SECRET", "REPORT", "THE", "AND"]
-
-            print(f"[*] Используемый словарь: {', '.join(vocab)}")
-            results = brute_force_attack(target_ciphertext, max_key_length=max_len, dictionary=vocab)
-
-            print("\n[+] Лучшие результаты перебора (топ-5):")
-            found = False
-            for score, key, text in results:
-                if score > 0:
-                    found = True
-                    print(f"Ключ: {key:<6} | Совпадений: {score} | Текст: {text}")
-
-            if not found:
-                print("[-] Подходящих вариантов не найдено.")
+    print("\n[+] ТОП-5 самых вероятных расшифровок:\n")
+    for i, (score, primer, text) in enumerate(results[:5], 1):
+        print(f"{i}. Ключ: '{primer}' | Баллы: {score}")
+        print(f"   Текст: {text[:80]}...\n")
 
 
 if __name__ == "__main__":
